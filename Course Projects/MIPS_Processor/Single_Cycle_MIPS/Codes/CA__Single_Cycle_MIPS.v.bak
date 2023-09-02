@@ -1,0 +1,210 @@
+`timescale 1ns/1ns
+
+module Register_32_bit(input clk, reset, load, input [31 : 0] D, output reg [31 : 0]Q);
+
+always @(posedge clk, posedge reset)begin
+   if(reset)
+      Q <= 32'b0;
+   else begin
+      if(load)
+         Q <= D;
+   end
+end
+
+endmodule
+
+module instruction_MEM(input clk, instruction_Write_en, input [31 : 0]Write_address, Read_address, input [31 : 0]Write_instruction, output [31 : 0]Read_instruction);
+
+parameter instruction_Memory_Size = 200;
+wire [31 : 0] register [instruction_Memory_Size - 1 : 0];
+reg  [instruction_Memory_Size - 1 : 0] load;
+
+genvar k;
+generate
+for(k = 0; k < instruction_Memory_Size; k = k + 1) begin
+  Register_32_bit xx(clk, 0, load[k], Write_instruction, register[k]);  
+end
+endgenerate 
+
+reg [7 : 0]i;
+always @(Write_address, instruction_Write_en)begin
+  for(i = 0; i < instruction_Memory_Size; i = i + 1)begin
+    load[i] = 1'b0;
+  end
+  if(instruction_Write_en)
+    load[Write_address] = 1'b1;
+end
+
+assign Read_instruction = register[Read_address];
+
+endmodule
+
+module Memory(input clk, reset, Mem_Read, Mem_Write, input [31 : 0]address, input [31 : 0]Write_Data, output [31 : 0]Read_Data);
+
+parameter Memory_Size = 100;
+wire [31 : 0] register [Memory_Size - 1 : 0];
+reg  [Memory_Size - 1 : 0] load;
+
+genvar k;
+generate
+for(k = 0; k < Memory_Size; k = k + 1) begin
+  Register_32_bit xx(clk, reset, load[k], Write_Data, register[k]);  
+end
+endgenerate 
+
+reg [7 : 0]i;
+always @(address, Mem_Write)begin
+  for(i = 0; i < Memory_Size; i = i + 1)begin
+    load[i] = 1'b0;
+  end
+  if(Mem_Write)
+    load[address] = 1'b1;
+end
+
+assign Read_Data = Mem_Read ? register[address] : 32'bz;
+
+endmodule
+
+module Register_File(input clk, reset, Reg_Write, input [4 : 0]Read_Register1, Read_Register2, Write_Register, input [31 : 0]Write_Data, output [31 : 0]Read_Data1, Read_Data2);
+
+parameter Register_File_Size = 32;
+wire [31 : 0] register [Register_File_Size - 1 : 0];
+reg  [Register_File_Size - 1 : 0] load;
+
+genvar k;
+generate
+for(k = 0; k < Register_File_Size; k = k + 1) begin
+  Register_32_bit xx(clk, reset, load[k], Write_Data, register[k]);  
+end
+endgenerate 
+
+reg [5 : 0]i;
+always @(Write_Register, Reg_Write)begin
+  for(i = 0; i < Register_File_Size; i = i + 1)begin
+    load[i] = 1'b0;
+  end
+  if(Reg_Write)
+    load[Write_Register] = 1'b1;
+end
+
+assign Read_Data1 = register[Read_Register1];
+assign Read_Data2 = register[Read_Register2];
+
+endmodule
+
+module ALU(input [2 : 0]ALU_operation, input [31 : 0]A, B, output [31 : 0]ALU_Result, output zero_flag);
+
+parameter ADD = 3'b000, SUB = 3'b001, Little_Than = 3'b010, AND = 3'b100, OR = 3'b101;
+assign ALU_Result = (ALU_operation == ADD) ? A + B :
+                    (ALU_operation == SUB) ? A - B :
+                    (ALU_operation == Little_Than) ? (A < B ? 1 : 0) :
+                    (ALU_operation == AND) ? A & B : 
+                    (ALU_operation == OR) ? A | B :
+                    32'bx;
+
+assign zero_flag = (ALU_Result == 32'b0) ? 1 : 0;
+                    
+endmodule
+
+module Sign_Extension_16_bit(input [15 : 0]_input, output [31 : 0] sign_extended_input);
+
+assign sign_extended_input = {_input[15], _input[15], _input[15], _input[15], _input[15], _input[15], _input[15], _input[15],
+                              _input[15], _input[15], _input[15], _input[15], _input[15], _input[15], _input[15], _input[15], _input};
+
+endmodule
+
+module Sign_Extension_21_bit(input [20 : 0]_input, output [31 : 0] sign_extended_input);
+
+assign sign_extended_input = {_input[15], _input[15], _input[15], _input[15], _input[15], _input[15], _input[15], _input[15],
+                              _input[15], _input[15], _input[15], _input};
+
+endmodule
+
+module Sign_Extension_26_bit(input [25 : 0]_input, output [31 : 0] sign_extended_input);
+
+assign sign_extended_input = {_input[15], _input[15], _input[15], _input[15], _input[15], _input[15], _input};
+
+endmodule
+
+module Single_Cycle_MIPS_DataPath(input clk, reset, instruction_Write_en, Reg_Write, Mem_Read, Mem_Write, ALU_source, PC_source, branch, input[1 : 0]Mem_to_Reg, jump_src, Reg_Dst, input [2 : 0]ALU_operation, input [31 : 0]Write_address, Write_instruction, output [31 : 0]ALU_Result, Register_file_Write_Data, instruction);
+
+wire zero_flag;
+wire [4 : 0]  Register_file_Write_Register;
+wire [31 : 0] PC_input, PC_output, Mem_Read_Data, Register_file_Read_Data1, Register_file_Read_Data2, jump, jump_address,
+              sign_extended_of_instruction_15_0, sign_extended_of_instruction_20_0, sign_extended_of_instruction_25_0, ALU_B_Input;
+
+instruction_MEM instruction_memory(clk, instruction_Write_en, Write_address, PC_output, Write_instruction, instruction);
+
+assign Register_file_Write_Register = (Reg_Dst == 2'b10) ? instruction[15 : 11] : (Reg_Dst == 2'b01) ? instruction[20 : 16] : instruction[25 : 21];
+
+Sign_Extension_16_bit sign_extension_16_bit(instruction[15 : 0], sign_extended_of_instruction_15_0);
+Sign_Extension_21_bit sign_extension_21_bit(instruction[20 : 0], sign_extended_of_instruction_20_0);
+Sign_Extension_26_bit sign_extension_26_bit(instruction[25 : 0], sign_extended_of_instruction_25_0);
+
+assign jump = (jump_src == 2'b00) ? sign_extended_of_instruction_25_0 : (jump_src == 2'b01) ? sign_extended_of_instruction_20_0 : Register_file_Read_Data1;
+assign jump_address = (branch & zero_flag) ? sign_extended_of_instruction_15_0 : jump;
+assign PC_input = (PC_source || (branch & zero_flag)) ? jump_address : PC_output + 1;
+Register_32_bit PC(clk, reset, 1, PC_input, PC_output);
+
+assign ALU_B_Input = ALU_source ? sign_extended_of_instruction_15_0 : Register_file_Read_Data2;
+ALU alu(ALU_operation, Register_file_Read_Data1, ALU_B_Input, ALU_Result, zero_flag);
+
+Memory data_memory(clk, reset, Mem_Read, Mem_Write, ALU_Result, Register_file_Read_Data2, Mem_Read_Data);
+
+assign Register_file_Write_Data = (Mem_to_Reg == 2'b00) ? Mem_Read_Data : (Mem_to_Reg == 2'b01) ? ALU_Result : PC_output + 1;
+Register_File register_file(clk, reset, Reg_Write, instruction[25 : 21], instruction[20 : 16], Register_file_Write_Register, Register_file_Write_Data, Register_file_Read_Data1, Register_file_Read_Data2);
+
+endmodule
+
+module Single_Cycle_MIPS_ALU_Controller(input [1 : 0]ALU_Op, input ALU_Src, input [5 : 0]func, output ALU_source, output [2 : 0]ALU_operation);
+
+parameter ADD = 6'b000000, SUB = 6'b000001, Little_Than = 6'b000010, AND = 6'b000100, OR = 6'b000101, SLT = 6'b000011;
+
+assign ALU_operation = (ALU_Op == 2'b00) ? ADD :
+                       (ALU_Op == 2'b01) ? SUB :
+                       (ALU_Op == 2'b11) ? Little_Than :
+                       (func == ADD) ? ADD :
+                       (func == SUB) ? SUB :
+                       (func == SLT) ? Little_Than :
+                       (func == AND) ? AND :
+                       (func == OR) ? OR:
+                       3'bz;
+
+assign ALU_source = (ALU_Src == 2'b00) ? 0 : 1;
+
+endmodule
+
+module Single_Cycle_MIPS_CU(input[4 : 0]opcode, input [5 : 0]func, output Reg_Write, ALU_source, output [2 : 0]ALU_operation, output [1 : 0]Mem_to_Reg, jump_src, Reg_Dst, output Mem_Read, Mem_Write, PC_source, branch);
+
+parameter AL = 5'b00000, LW = 5'b00001, SW = 5'b00010, ADDI = 5'b00011, SLTI = 5'b00100, J = 5'b00101, JAL = 5'b00110, JR = 5'b00111, Beq = 5'b01000,
+          Read_Data2_of_register_file = 2'b00, sign_extended_of_15_0_of_instruction = 2'b01, 
+          Func = 2'b10, ADD = 2'b00, SUB = 2'b01, Little_Than = 2'b11, instruction_15_11 = 2'b10, instruction_20_16 = 2'b01, instruction_25_21 = 2'b00;
+wire [1 : 0]ALU_Op;
+wire ALU_Src;
+
+assign Reg_Dst = (opcode == AL) ? instruction_15_11 : (opcode == JAL)? instruction_25_21 : instruction_20_16;
+assign Reg_Write = (opcode == AL || opcode == LW || opcode == ADDI || opcode == SLTI || opcode == JAL) ? 1 : 0;
+assign ALU_Op = (opcode == AL) ? Func : (opcode == SLTI) ? Little_Than : (opcode == Beq) ? SUB : ADD;
+assign ALU_Src = (opcode == AL || opcode == Beq) ? Read_Data2_of_register_file : sign_extended_of_15_0_of_instruction;
+assign branch = (opcode == Beq) ? 1 : 0;
+assign jump_src = (opcode == J) ? 2'b00 : (opcode == JAL) ? 2'b01 : 2'b10;
+assign PC_source = (opcode == J || opcode == JAL || opcode == JR || opcode == Beq) ? 1 : 0;
+assign Mem_Read = (opcode == LW) ? 1 : 0;
+assign Mem_Write = (opcode == SW) ? 1 : 0;
+assign Mem_to_Reg = (opcode == AL || opcode == ADDI || opcode == SLTI) ? 2'b01 : (opcode == JAL) ? 2'b10 : 2'b00;
+                 
+Single_Cycle_MIPS_ALU_Controller ALU_Controller(ALU_Op, ALU_Src, func, ALU_source, ALU_operation);
+
+endmodule
+
+module Single_Cycle_MIPS(input clk, reset, instruction_Write_en, input [31 : 0]Write_address, Write_instruction, output [31 : 0]ALU_Result, Register_file_Write_Data);
+
+wire Reg_Write, ALU_source, Mem_Read, Mem_Write, branch;
+wire [1 : 0]Mem_to_Reg, jump_src, Reg_Dst;
+wire [2 : 0]ALU_operation;
+wire [31 : 0]instruction;
+
+Single_Cycle_MIPS_DataPath DataPath(clk, reset, instruction_Write_en, Reg_Write, Mem_Read, Mem_Write, ALU_source, PC_source, branch, Mem_to_Reg, jump_src, Reg_Dst, ALU_operation, Write_address, Write_instruction, ALU_Result, Register_file_Write_Data, instruction);
+Single_Cycle_MIPS_CU CU(instruction[31 : 27], instruction[5 : 0], Reg_Write, ALU_source, ALU_operation, Mem_to_Reg, jump_src, Reg_Dst, Mem_Read, Mem_Write, PC_source, branch);
+
+endmodule

@@ -1,0 +1,20 @@
+D:/modelsim_ase/Projects/CA__PipeLine_MIPS_Modules.v {1 {vlog -work work -stats=none D:/modelsim_ase/Projects/CA__PipeLine_MIPS_Modules.v
+Model Technology ModelSim - Intel FPGA Edition vlog 2020.1 Compiler 2020.02 Feb 28 2020
+-- Compiling module adder
+-- Compiling module MUX_2_To_1
+-- Compiling module MUX_3_To_1
+-- Compiling module Data_Memory
+-- Compiling module Instruction_Memory
+-- Compiling module Register_File
+-- Compiling module PC
+
+Top level modules:
+	adder
+	MUX_2_To_1
+	MUX_3_To_1
+	Data_Memory
+	Instruction_Memory
+	Register_File
+	PC
+
+} {} {}}

@@ -1,0 +1,39 @@
+D:/modelsim_ase/Projects/CA__Multi_Cycle_MIPS.v {2 {vlog -work work -stats=none D:/modelsim_ase/Projects/CA__Multi_Cycle_MIPS.v
+Model Technology ModelSim - Intel FPGA Edition vlog 2020.1 Compiler 2020.02 Feb 28 2020
+-- Compiling module Register_16_bit
+-- Compiling module Memory
+-- Compiling module Register_File
+-- Compiling module ALU
+-- Compiling module Sign_Extension_9_bit
+** Warning: D:/modelsim_ase/Projects/CA__Multi_Cycle_MIPS.v(93): (vlog-2121) Illegal concatenation of an unsized constant. Will treat it as a 32-bit value.
+** Warning: D:/modelsim_ase/Projects/CA__Multi_Cycle_MIPS.v(93): (vlog-2121) Illegal concatenation of an unsized constant. Will treat it as a 32-bit value.
+** Warning: D:/modelsim_ase/Projects/CA__Multi_Cycle_MIPS.v(93): (vlog-2121) Illegal concatenation of an unsized constant. Will treat it as a 32-bit value.
+** Warning: D:/modelsim_ase/Projects/CA__Multi_Cycle_MIPS.v(93): (vlog-2121) Illegal concatenation of an unsized constant. Will treat it as a 32-bit value.
+** Warning: D:/modelsim_ase/Projects/CA__Multi_Cycle_MIPS.v(93): (vlog-2121) Illegal concatenation of an unsized constant. Will treat it as a 32-bit value.
+** Warning: D:/modelsim_ase/Projects/CA__Multi_Cycle_MIPS.v(93): (vlog-2121) Illegal concatenation of an unsized constant. Will treat it as a 32-bit value.
+** Warning: D:/modelsim_ase/Projects/CA__Multi_Cycle_MIPS.v(93): (vlog-2121) Illegal concatenation of an unsized constant. Will treat it as a 32-bit value.
+** Warning: D:/modelsim_ase/Projects/CA__Multi_Cycle_MIPS.v(93): (vlog-2121) Illegal concatenation of an unsized constant. Will treat it as a 32-bit value.
+** Warning: D:/modelsim_ase/Projects/CA__Multi_Cycle_MIPS.v(93): (vlog-2121) Illegal concatenation of an unsized constant. Will treat it as a 32-bit value.
+** Warning: D:/modelsim_ase/Projects/CA__Multi_Cycle_MIPS.v(93): (vlog-2121) Illegal concatenation of an unsized constant. Will treat it as a 32-bit value.
+** Warning: D:/modelsim_ase/Projects/CA__Multi_Cycle_MIPS.v(93): (vlog-2121) Illegal concatenation of an unsized constant. Will treat it as a 32-bit value.
+** Warning: D:/modelsim_ase/Projects/CA__Multi_Cycle_MIPS.v(93): (vlog-2121) Illegal concatenation of an unsized constant. Will treat it as a 32-bit value.
+** Warning: D:/modelsim_ase/Projects/CA__Multi_Cycle_MIPS.v(93): (vlog-2121) Illegal concatenation of an unsized constant. Will treat it as a 32-bit value.
+** Warning: D:/modelsim_ase/Projects/CA__Multi_Cycle_MIPS.v(93): (vlog-2121) Illegal concatenation of an unsized constant. Will treat it as a 32-bit value.
+-- Compiling module Sign_Extension_12_bit
+** Warning: D:/modelsim_ase/Projects/CA__Multi_Cycle_MIPS.v(99): (vlog-2121) Illegal concatenation of an unsized constant. Will treat it as a 32-bit value.
+** Warning: D:/modelsim_ase/Projects/CA__Multi_Cycle_MIPS.v(99): (vlog-2121) Illegal concatenation of an unsized constant. Will treat it as a 32-bit value.
+** Warning: D:/modelsim_ase/Projects/CA__Multi_Cycle_MIPS.v(99): (vlog-2121) Illegal concatenation of an unsized constant. Will treat it as a 32-bit value.
+** Warning: D:/modelsim_ase/Projects/CA__Multi_Cycle_MIPS.v(99): (vlog-2121) Illegal concatenation of an unsized constant. Will treat it as a 32-bit value.
+** Warning: D:/modelsim_ase/Projects/CA__Multi_Cycle_MIPS.v(99): (vlog-2121) Illegal concatenation of an unsized constant. Will treat it as a 32-bit value.
+** Warning: D:/modelsim_ase/Projects/CA__Multi_Cycle_MIPS.v(99): (vlog-2121) Illegal concatenation of an unsized constant. Will treat it as a 32-bit value.
+** Warning: D:/modelsim_ase/Projects/CA__Multi_Cycle_MIPS.v(99): (vlog-2121) Illegal concatenation of an unsized constant. Will treat it as a 32-bit value.
+** Warning: D:/modelsim_ase/Projects/CA__Multi_Cycle_MIPS.v(99): (vlog-2121) Illegal concatenation of an unsized constant. Will treat it as a 32-bit value.
+-- Compiling module Multi_Cycle_MIPS_DataPath
+-- Compiling module Multi_Cycle_MIPS_ALU_Controller
+-- Compiling module Multi_Cycle_MIPS_CU
+-- Compiling module Multi_Cycle_MIPS
+
+Top level modules:
+	Multi_Cycle_MIPS
+
+} {} {}}

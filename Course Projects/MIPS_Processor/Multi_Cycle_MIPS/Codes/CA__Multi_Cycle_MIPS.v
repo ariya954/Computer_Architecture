@@ -1,0 +1,222 @@
+`timescale 1ns/1ns
+
+module Register_16_bit(input clk, reset, load, input [15 : 0]D, output reg [15 : 0]Q);
+
+always @(posedge clk, posedge reset)begin
+   if(reset)
+      Q <= 16'b0;
+   else begin
+      if(load)
+         Q <= D;
+   end
+end
+
+endmodule
+ 
+module Memory(input clk, reset, Mem_Read, Mem_Write, instruction_Write_en, input [15 : 0]Write_instruction_address, address, Write_instruction, Write_Data, output [15 : 0]Read_Memory);
+
+parameter Memory_Size = 130;
+wire [15 : 0] register [Memory_Size - 1 : 0];
+wire [15 : 0] Write_Instruction;
+reg  [Memory_Size - 1 : 0] load;
+
+assign Write_Instruction = instruction_Write_en ? Write_instruction : Write_Data;
+
+genvar k;
+generate
+for(k = 0; k < Memory_Size; k = k + 1) begin
+  if(k < 100) //first 100 of memory is for instructions and other 30 is for data
+    Register_16_bit xx(clk, 0, load[k], Write_Instruction, register[k]);
+  else
+    Register_16_bit xx(clk, reset, load[k], Write_Data, register[k]);  
+end
+endgenerate 
+
+reg [11 : 0]i;
+always @(address, Mem_Write, instruction_Write_en, Write_instruction_address)begin
+  for(i = 0; i < Memory_Size; i = i + 1)begin
+    load[i] = 1'b0;
+  end
+  if(instruction_Write_en)
+    load[Write_instruction_address] = 1'b1;
+  else if(Mem_Write)
+    load[address] = 1'b1;
+end
+
+assign Read_Memory = Mem_Read ? register[address] : 16'bz;
+
+endmodule
+
+module Register_File(input clk, reset, Reg_Write, input [2 : 0]Read_Register1, Read_Register2, Write_Register, input [15 : 0]Write_Data, output [15 : 0]Read_Data1, Read_Data2);
+
+parameter Register_File_Size = 8;
+wire [15 : 0] register [Register_File_Size - 1 : 0];
+reg  [Register_File_Size - 1 : 0] load;
+
+genvar k;
+generate
+for(k = 0; k < Register_File_Size; k = k + 1) begin
+  Register_16_bit xx(clk, reset, load[k], Write_Data, register[k]);  
+end
+endgenerate 
+
+reg [3 : 0]i;
+always @(Write_Register, Reg_Write)begin
+  for(i = 0; i < Register_File_Size; i = i + 1)begin
+    load[i] = 1'b0;
+  end
+  if(Reg_Write)
+    load[Write_Register] = 1'b1;
+end
+
+assign Read_Data1 = register[Read_Register1];
+assign Read_Data2 = register[Read_Register2];
+
+endmodule
+
+module ALU(input [2 : 0]ALU_operation, input [15 : 0]A, B, output [15 : 0]ALU_Result, output zero_flag);
+
+parameter ADD = 3'b000, SUB = 3'b001, AND = 3'b010, OR = 3'b011, NOT = 3'b100;
+assign ALU_Result = (ALU_operation == ADD) ? A + B :
+                    (ALU_operation == SUB) ? A - B :
+                    (ALU_operation == NOT) ? ~A :
+                    (ALU_operation == AND) ? A & B : 
+                    (ALU_operation == OR) ? A | B :
+                    16'bx;
+
+assign zero_flag = (ALU_Result == 16'b0) ? 1 : 0;
+                    
+endmodule
+
+module Sign_Extension_9_bit(input [8 : 0]_input, output [15 : 0] sign_extended_input);
+
+assign sign_extended_input = {0, 0, 0, 0, 0, 0, 0, _input};
+
+endmodule
+
+module Sign_Extension_12_bit(input [11 : 0]_input, output [15 : 0] sign_extended_input);
+
+assign sign_extended_input = {0, 0, 0, 0, _input};
+
+endmodule
+
+module Multi_Cycle_MIPS_DataPath(input clk, reset, instruction_Write_en, Reg_Write, Mem_Read, Mem_Write, Mem_to_Reg, Reg_Dst, ALU_Src_A, PC_Write, PC_Write_Cond, I_or_D, IR_Write, input[1 : 0]Register_file_Write_Select, PC_Src, input [2 : 0]ALU_operation, ALU_Src_B, input [15 : 0]Write_instruction_address, Write_instruction, output [15 : 0]Read_Memory);
+
+wire zero_flag;
+wire [2 : 0]  Register_file_Write_Register;
+wire [15 : 0] PC_input, PC_output, instruction, address, Write_Data, loaded_data_from_memory, Register_file_Read_Data1, Register_file_Read_Data2, Register_file_Write_Select_0, Register_file_Write_Data,
+              A_register, B_register, sign_extended_of_instruction_8_0, sign_extended_of_instruction_11_0, ALU_A_Input, ALU_B_Input, ALU_Result, alu_out;
+
+Sign_Extension_9_bit sign_extension_9_bit(instruction[8 : 0], sign_extended_of_instruction_8_0);
+Sign_Extension_12_bit sign_extension_12_bit(instruction[11 : 0], sign_extended_of_instruction_11_0);
+
+assign PC_input = (PC_Src == 2'b00) ? ALU_Result :
+                  (PC_Src == 2'b01) ? sign_extended_of_instruction_11_0 :
+                  (PC_Src == 2'b10) ? sign_extended_of_instruction_8_0  : 2'bz;
+Register_16_bit PC(clk, reset, (PC_Write || (zero_flag && PC_Write_Cond)), PC_input, PC_output);
+
+Register_16_bit IR(clk, reset, IR_Write, Read_Memory, instruction);
+Register_16_bit MDR(clk, reset, 1, Read_Memory, loaded_data_from_memory);
+Register_16_bit A(clk, reset, 1, Register_file_Read_Data1, A_register);
+Register_16_bit B(clk, reset, 1, Register_file_Read_Data2, B_register);
+Register_16_bit ALU_out(clk, reset, 1, ALU_Result, alu_out);
+
+assign ALU_A_Input = ALU_Src_A ? A_register : PC_output;
+assign ALU_B_Input = (ALU_Src_B == 3'b000) ? B_register : 
+                     (ALU_Src_B == 3'b001) ? 16'b0000000000000001 :
+                     (ALU_Src_B == 3'b010 || ALU_Src_B == 3'b011) ? sign_extended_of_instruction_8_0 : sign_extended_of_instruction_11_0;
+ALU alu(ALU_operation, ALU_A_Input, ALU_B_Input, ALU_Result, zero_flag);
+
+assign address = I_or_D ? sign_extended_of_instruction_11_0 : PC_output;
+assign Write_Data = A_register;
+Memory memory(clk, reset, Mem_Read, Mem_Write, instruction_Write_en, Write_instruction_address, address, Write_instruction, Write_Data, Read_Memory);
+
+assign Register_file_Write_Register = Reg_Dst ? 3'b0 : instruction[11 : 9];
+assign Register_file_Write_Select_0 = Mem_to_Reg ? loaded_data_from_memory : alu_out;
+assign Register_file_Write_Data = (Register_file_Write_Select == 2'b00) ? Register_file_Write_Select_0 : 
+                                  (Register_file_Write_Select == 2'b01) ? A_register : 
+                                  (Register_file_Write_Select == 2'b10) ? B_register : 16'bz;
+Register_File register_file(clk, reset, Reg_Write, 0, instruction[11 : 9], Register_file_Write_Register, Register_file_Write_Data, Register_file_Read_Data1, Register_file_Read_Data2);
+
+endmodule
+
+module Multi_Cycle_MIPS_ALU_Controller(input [1 : 0]ALU_Op, input [3 : 0]opcode, input [8 : 0] func, output [2 : 0]ALU_operation);
+
+parameter ADD = 3'b000, SUB = 3'b001, AND = 3'b010, OR = 3'b011, NOT = 3'b100;
+
+assign ALU_operation = (ALU_Op == 2'b11 && opcode[1] == 0 && opcode[0] == 0) ? ADD :
+                       (ALU_Op == 2'b11 && opcode[1] == 0 && opcode[0] == 1) ? SUB :
+                       (ALU_Op == 2'b11 && opcode[1] == 1 && opcode[0] == 0) ? AND :
+                       (ALU_Op == 2'b11 && opcode[1] == 1 && opcode[0] == 1) ? OR :
+                       (ALU_Op == 2'b10 && func[2] == 1) ? ADD :
+                       (ALU_Op == 2'b10 && func[3] == 1) ? SUB :
+                       (ALU_Op == 2'b10 && func[4] == 1) ? AND :
+                       (ALU_Op == 2'b10 && func[5] == 1) ? OR :
+                       (ALU_Op == 2'b10 && func[6] == 1) ? NOT :
+                       (ALU_Op == 2'b0) ? ADD :
+                       (ALU_Op == 2'b01) ? SUB :
+                       3'bz;
+
+endmodule
+
+module Multi_Cycle_MIPS_CU(input clk, reset, input[3 : 0]opcode, input [8 : 0]func, output reg Reg_Write, Mem_Read, Mem_Write, Mem_to_Reg, Reg_Dst, ALU_Src_A, PC_Write, PC_Write_Cond, I_or_D, IR_Write, output reg [1 : 0]Register_file_Write_Select, PC_Src, output [2 : 0]ALU_operation, output reg  [2 : 0]ALU_Src_B);
+
+reg [1 : 0]ALU_Op;
+reg [3 : 0]ns, ps;
+parameter[3 : 0] IF = 4'd0, ID = 4'd1, D_Type_Step_1 = 4'd2, D_Type_Step_2 = 4'd3, Load_Step_1 = 4'd4, Load_Step_2 = 4'd5, Store = 4'd6, C_Type = 4'd7,
+                 Nop = 4'd8, MoveTo = 4'd9, MoveFrom = 4'd10, Other_Wise_Step_1 = 4'd11, Other_Wise_Step_2 = 4'd12, Jump = 4'd13, BranchZ_Step_1 = 4'd14, BranchZ_Step_2 = 4'd15;
+
+always @(ps, opcode, func) begin
+   {Reg_Write, Mem_Write, Mem_to_Reg, Reg_Dst, ALU_Src_A, PC_Write, PC_Write_Cond, I_or_D, IR_Write} = 9'b0;
+           Register_file_Write_Select = 2'b0; PC_Src = 2'b0; ALU_Src_B = 3'b0;
+   case(ps) 
+     IF:  begin ns = ID; I_or_D = 0; Mem_Read = 1; ALU_Src_A = 0; ALU_Src_B = 2'b01; ALU_Op = 2'b00; PC_Write = 1; PC_Src = 2'b00; end
+     ID:  begin ns = ((opcode[3] == 1) && (opcode[2] == 1)) ? D_Type_Step_1 :
+                     (opcode[3] == 1) ? C_Type :
+                     (opcode[0] == 1) ? Store :    
+                     (opcode[1] == 1) ? Jump :  
+                     (opcode[2] == 1) ? BranchZ_Step_1 : 
+                     (opcode == 4'b0) ? Load_Step_1 : 4'dx; IR_Write = 1; ALU_Src_A = 0; ALU_Src_B = 2'b11; ALU_Op = 2'b00; end
+     D_Type_Step_1: begin ns = D_Type_Step_2; ALU_Src_A = 1; ALU_Src_B = 3'b100; ALU_Op = 2'b11; end
+     D_Type_Step_2: begin ns = IF; Reg_Dst = 1; Mem_to_Reg = 0; Register_file_Write_Select = 2'b0; Reg_Write = 1; end
+     Load_Step_1: begin ns = Load_Step_2; I_or_D = 1; Mem_Read = 1; end
+     Load_Step_2: begin ns = IF; Reg_Dst = 1; Mem_to_Reg = 1; Register_file_Write_Select = 2'b0; Reg_Write = 1; end
+     Store: begin ns = IF; I_or_D = 1; Mem_Write = 1; end
+     C_Type: begin ns = (func[7] == 1) ? Nop :
+                        (func[0] == 1) ? MoveTo :
+                        (func[1] == 1) ? MoveFrom : Other_Wise_Step_1; ALU_Src_A = 1; ALU_Src_B = 2'b0; ALU_Op = 2'b10; end
+     Nop: begin ns = IF; PC_Write = 0; IR_Write = 0; Reg_Write = 0; Mem_Write = 0; end
+     MoveTo: begin ns = IF; Reg_Dst = 0; Register_file_Write_Select = 2'b01; Reg_Write = 1; end
+     MoveFrom: begin ns = IF; Reg_Dst = 1; Register_file_Write_Select = 2'b10; Reg_Write = 1; end
+     Other_Wise_Step_1: begin ns = Other_Wise_Step_2; ALU_Src_A = 1; end
+     Other_Wise_Step_2: begin ns = IF; Reg_Dst = 1; Register_file_Write_Select = 2'b0; Mem_to_Reg = 0; Reg_Write = 1; end
+     Jump: begin ns = IF; PC_Src = 2'b01; PC_Write = 1; end
+     BranchZ_Step_1: begin ns = BranchZ_Step_2; ALU_Src_B = 2'b11; end
+     BranchZ_Step_2: begin ns = IF; ALU_Src_A = 1;  ALU_Src_B = 2'b0; ALU_Op = 2'b01; PC_Src = 2'b10; PC_Write_Cond = 1; end
+     default: ns = IF;
+   endcase
+end
+
+Multi_Cycle_MIPS_ALU_Controller ALU_Controller(ALU_Op, opcode, func, ALU_operation);
+
+always @(posedge clk, posedge reset) begin
+   if(reset)
+     ps <= 0;
+   else begin
+     ps <= ns;
+   end
+end
+
+endmodule
+
+module Multi_Cycle_MIPS(input clk, reset, instruction_Write_en, input [15 : 0]Write_instruction_address, Write_instruction);
+
+wire Reg_Write, ALU_source, Mem_Read, Mem_Write, Mem_to_Reg, Reg_Dst, ALU_Src_A, PC_Write, PC_Write_Cond, I_or_D, IR_Write;
+wire [1 : 0]Register_file_Write_Select, PC_Src;
+wire [2 : 0]ALU_operation, ALU_Src_B;
+wire [15 : 0]Read_Memory;
+
+Multi_Cycle_MIPS_DataPath DataPath(clk, reset, instruction_Write_en, Reg_Write, Mem_Read, Mem_Write, Mem_to_Reg, Reg_Dst, ALU_Src_A, PC_Write, PC_Write_Cond, I_or_D, IR_Write, Register_file_Write_Select, PC_Src, ALU_operation, ALU_Src_B, Write_instruction_address, Write_instruction, Read_Memory);
+Multi_Cycle_MIPS_CU CU(clk, reset, Read_Memory[15 : 12], Read_Memory[8 : 0], Reg_Write, Mem_Read, Mem_Write, Mem_to_Reg, Reg_Dst, ALU_Src_A, PC_Write, PC_Write_Cond, I_or_D, IR_Write, Register_file_Write_Select, PC_Src, ALU_operation, ALU_Src_B);
+
+endmodule

@@ -1,0 +1,190 @@
+`timescale 1ns / 1ns
+
+module Stage_IF(input clk, input [2 : 0]IF_Control_Signals, input PC_Write, input [31 : 0]Jump_Address, Jr_Address, Beq_Address, output [31 : 0]Instruction, PC_Plus_4);
+
+wire PC_Src, Jump, Jr;
+wire [31 : 0]output_of_Beq_MUX, output_of_Jump_MUX, address;
+reg  [31 : 0]PC_input;
+
+initial begin 
+PC_input <= 32'd0;
+end
+
+assign {PC_Src, Jump, Jr} = IF_Control_Signals;
+assign PC_input = Jr ? Jr_Address : output_of_Jump_MUX;
+
+adder Add_4(address, 32'd4, PC_Plus_4);
+MUX_2_To_1 Beq_MUX(PC_Plus_4, Beq_Address, PC_Src, output_of_Beq_MUX);
+MUX_2_To_1 Jump_MUX(output_of_Beq_MUX, Jump_Address, Jump, output_of_Jump_MUX);
+PC pc(clk, PC_Write, PC_input, address);
+Instruction_Memory instruction_memory(address, Instruction);
+
+endmodule
+
+module IF_ID(input clk, IF_ID_write, input [31 : 0]address_IF, input_instruction, output reg [31 : 0]address_ID, output_instruction);
+
+always @(posedge clk) begin
+
+if(IF_ID_write) begin
+   address_ID = address_IF;
+   output_instruction = input_instruction;
+end
+	
+end
+
+endmodule
+
+module Stage_ID(clk, Reg_Write_WB, Write_Register, Mem_Read_EX, Rt_EX, address_ID, Instruction, Write_Data, IF_ID_Write, PC_Write, Beq_Address, Jump_Address, Jr_Address, Read_Data1, Read_Data2, Offset, Rs, Rt, Rd, Func, Control_signal_for_WB, Control_signal_for_Mem, Control_signal_for_EX, IF_Control_Signals);
+	input clk, Mem_Read_EX, Reg_Write_WB;
+	input [31 : 0]Instruction, address_ID, Write_Data;
+	input [4  : 0]Write_Register, Rt_EX;
+	output IF_ID_Write, PC_Write;
+	output [2  : 0]Control_signal_for_WB, Control_signal_for_Mem, IF_Control_Signals;
+	output [4  : 0]Rs, Rt, Rd, Control_signal_for_EX;
+	output [5  : 0]Func;
+	output [31 : 0]Offset, Read_Data1, Read_Data2, Beq_Address, Jump_Address, Jr_Address;
+
+wire Hazard_Control_Signal, EQ, Reg_Dst, Reg_Write, Jal, Jr, Jump, Mem_to_Reg, Mem_Read, Mem_Write, ALU_Src, PC_Src;
+wire [1  : 0]ALU_Op;
+wire [5  : 0]OPC;
+wire [4  : 0]Rs, Rt;
+wire [31 : 0]Offset, Read_Data1, Read_Data2;
+
+assign OPC = Instruction[31 : 26];
+assign Func = Instruction[5 : 0];
+assign {Rs, Rt, Rd} = Instruction[25 : 11];
+assign Offset[15 : 0] = Instruction[15 : 0];	
+assign Offset[31 : 16] = {16{Instruction[15]}}; // sign extension
+assign Jump_Address = {address_ID[31 : 28], Instruction[25 : 0], 2'b0};
+assign Jr_Address = Read_Data1;
+assign EQ = (Read_Data1 == Read_Data2) ? 1 : 0;
+assign IF_Control_Signals = {PC_Src, Jump, Jr};
+//assign Control_signal_for_EX = {ALU_Src, Jal, Reg_Dst, ALU_Op};
+//assign Control_signal_for_Mem = {Reg_Write, Mem_Read, Mem_Write};
+//assign Control_signal_for_WB = {Reg_Write, Jal, Mem_to_Reg];
+
+adder Beq_Adder({Offset[29 : 0], 2'b0}, address_ID, Beq_Address);
+Hazard_Unit HU(clk, Rs, Rt, Rt_EX, Mem_Read_EX, PC_Write, IF_ID_Write, Hazard_Control_Signal);
+Controller CU(clk, EQ, OPC, Reg_Dst, Reg_Write, Jal, Jr, Jump, Mem_to_Reg, Mem_Read, Mem_Write, ALU_Src, PC_Src, ALU_Op);
+Register_File register_file(clk, Reg_Write_WB, Rs, Rt, Write_Register, Write_Data, Read_Data1, Read_Data2);
+MUX_2_To_1_11_bit CTRL({ALU_Src, Jal, Reg_Dst, ALU_Op, Reg_Write, Mem_Read, Mem_Write, Reg_Write, Jal, Mem_to_Reg}, 11'b0, Hazard_Control_Signal, {Control_signal_for_EX, Control_signal_for_Mem, Control_signal_for_WB});
+
+endmodule
+
+module ID_EX(clk, address_ID, Control_Signals_coming_from_ID_to_WB, Control_Signals_coming_from_ID_to_Mem, Control_Signals_coming_from_ID_to_EX, Read_Data1, Read_Data2, offset, Rt, Rd, Rs, Input_Func, address_EX, Control_Signals_coming_from_EX_to_WB, Control_Signals_coming_from_EX_to_Mem, EX_Control_Signals, output_Read_Data1, output_Read_Data2, output_offset, Rd_EX, Rt_EX, Rs_EX, Output_Func);
+	input clk;
+	input [2  : 0]Control_Signals_coming_from_ID_to_WB, Control_Signals_coming_from_ID_to_Mem;
+	input [31 : 0]Read_Data1, Read_Data2, offset, address_ID;
+	input [5  : 0]Input_Func;
+	input [4  : 0]Rt, Rd, Rs, Control_Signals_coming_from_ID_to_EX;
+	output reg [31 : 0]address_EX, output_Read_Data1, output_Read_Data2, output_offset;
+	output reg [4  : 0]Rd_EX, Rt_EX, Rs_EX, EX_Control_Signals;
+	output reg [2  : 0]Control_Signals_coming_from_EX_to_WB, Control_Signals_coming_from_EX_to_Mem;
+	output reg [5  : 0]Output_Func;
+	
+always @(posedge clk) begin
+address_EX = address_ID;
+Control_Signals_coming_from_EX_to_WB = Control_Signals_coming_from_ID_to_WB;
+Control_Signals_coming_from_EX_to_Mem = Control_Signals_coming_from_ID_to_Mem; 
+EX_Control_Signals = Control_Signals_coming_from_ID_to_EX;
+output_Read_Data1 = Read_Data1;
+output_Read_Data2 = Read_Data2;
+output_offset = offset;
+Rt_EX = Rt;
+Rd_EX = Rd;
+Rs_EX = Rs;
+Output_Func = Input_Func;
+end
+
+endmodule
+
+module Stage_EX(clk, Reg_Write_Mem, Reg_Write_WB, EX_Control_Signals, Rt_EX, Rs_EX, Rd_EX, Dst_Reg_Mem, Dst_Reg_WB, Func, Offset_out, Read_Data1_out, Read_Data2_out, Mem_To_Reg_input_of_ALU_MUX, Memory_Address, Dst_Reg_EX, ALU_Result, ALU_B_MUX_input);
+	input clk, Reg_Write_Mem, Reg_Write_WB;
+	input  [4  : 0] Rt_EX, Rs_EX, Rd_EX, Dst_Reg_Mem, Dst_Reg_WB, EX_Control_Signals;
+	input  [5  : 0] Func;
+	input  [31 : 0] Offset_out, Read_Data1_out, Read_Data2_out, Mem_To_Reg_input_of_ALU_MUX, Memory_Address;
+	output [4  : 0] Dst_Reg_EX;
+	output [31 : 0] ALU_Result, ALU_B_MUX_input;
+
+wire [1 : 0] ALU_Op;
+wire ALU_Src, Jal, Reg_Dst, zero;
+wire [1 : 0]Forward_unit_output_for_A_input_of_ALU, Forward_unit_output_for_B_input_of_ALU;
+wire [2 : 0]ALU_operation;
+wire [4 : 0]Dst_Reg_Input;
+wire [31 : 0]ALU_A_input, ALU_B_MUX_input, ALU_B_input;
+
+assign {ALU_Src, Jal, Reg_Dst, ALU_Op} = EX_Control_Signals;
+
+MUX_3_To_1 MUX_of_A_input_of_ALU(Read_Data1_out, Mem_To_Reg_input_of_ALU_MUX, Memory_Address, Forward_unit_output_for_A_input_of_ALU, ALU_A_input);
+MUX_3_To_1 first_MUX_of_B_input_of_ALU(Read_Data2_out, Mem_To_Reg_input_of_ALU_MUX, Memory_Address, Forward_unit_output_for_B_input_of_ALU, ALU_B_MUX_input);
+MUX_2_To_1 second_MUX_of_B_input_of_ALU(ALU_B_MUX_input, Offset_out, ALU_Src, ALU_B_input);
+MUX_2_To_1_5_bit Reg_Dst1(Rt_EX, Rd_EX, Reg_Dst, Dst_Reg_Input);
+MUX_2_To_1_5_bit Reg_Dst2(Dst_Reg_Input, 5'd31, Jal, Dst_Reg_EX);
+ALU_Controller alu_controller(ALU_Op, Func, ALU_operation);
+ALU alu(ALU_A_input, ALU_B_input, ALU_operation, ALU_Result, zero);
+Forwarding_Unit FU(clk, Reg_Write_Mem, Reg_Write_WB, Rs_EX, Rt_EX, Dst_Reg_Mem, Dst_Reg_WB, Forward_unit_output_for_A_input_of_ALU, Forward_unit_output_for_B_input_of_ALU);
+
+endmodule
+
+module EX_M(clk, address_EX, Control_Signals_coming_from_EX_to_WB, Control_Signals_coming_from_EX_to_Mem, ALU_Result, ALU_B_input, Dst_Reg_EX, address_Mem, Control_Signals_coming_from_Mem_to_WB, Mem_Control_Signals, Memory_Address, Write_Data_Mem, Dst_Reg_Mem);
+	input  clk;
+	input [2  : 0]Control_Signals_coming_from_EX_to_WB, Control_Signals_coming_from_EX_to_Mem;
+	input [31 : 0]ALU_Result, ALU_B_input, address_EX;
+	input [4  : 0]Dst_Reg_EX;
+	output reg [4  : 0]Dst_Reg_Mem;
+	output reg [31 : 0]Memory_Address, Write_Data_Mem, address_Mem;
+	output reg [2  : 0]Control_Signals_coming_from_Mem_to_WB, Mem_Control_Signals;
+
+always @(posedge clk) begin
+    address_Mem = address_EX;
+    Control_Signals_coming_from_Mem_to_WB = Control_Signals_coming_from_EX_to_WB;
+    Mem_Control_Signals = Control_Signals_coming_from_EX_to_Mem;
+    Dst_Reg_Mem = Dst_Reg_EX;
+    Memory_Address = ALU_Result;
+    Write_Data_Mem = ALU_B_input;
+end
+
+endmodule
+
+
+module Stage_MEM(input clk, input [2 : 0]MEM_Control_Signals, input [31 : 0]Memory_Address, Write_Data_Memory, output [31 : 0]Memory_Address_Out, Read_Data_Memory);
+
+wire Reg_Write, Mem_Read, Mem_Write;
+
+assign {Reg_Write, Mem_Read, Mem_Write} = MEM_Control_Signals;
+assign Memory_Address_Out = Memory_Address;
+
+Data_Memory data_memory(clk, Mem_Read, Mem_Write, Memory_Address, Write_Data_Memory, Read_Data_Memory);
+
+endmodule
+
+module M_WB(clk, address_Mem, Control_Signals_coming_from_Mem_to_WB, Output_Memory_Address, Memory_Read_Data, Dst_Reg_Mem, address_WB, WB_Control_Signals, input_Memory_Address, input_Read_Data, Dst_Reg_WB);
+	input  clk;
+	input [2  : 0]Control_Signals_coming_from_Mem_to_WB;
+	input [31 : 0]Output_Memory_Address, Memory_Read_Data, address_Mem;
+	input [4  : 0]Dst_Reg_Mem;
+	output reg [4  : 0]Dst_Reg_WB;
+	output reg [31 : 0]input_Memory_Address, input_Read_Data, address_WB;
+	output reg [2  : 0]WB_Control_Signals;
+
+always @(posedge clk) begin
+    address_WB = address_Mem;
+    WB_Control_Signals = Control_Signals_coming_from_Mem_to_WB;
+    Dst_Reg_WB = Dst_Reg_Mem;
+    input_Memory_Address = Output_Memory_Address;
+    input_Read_Data = Memory_Read_Data;
+end
+
+endmodule
+
+module Stage_Write_Back(input [2 : 0]Write_Back_Control_Signals, input [31 : 0]address_Write_Back, Memory_Address_Write_Back, Read_Data_Write_Back, output [31 : 0]Write_Data);
+
+wire [31 : 0]input_of_Jal_MUX;
+wire Reg_Write, Jal, Mem_to_Reg;
+	
+assign {Reg_Write, Jal, Mem_to_Reg} = Write_Back_Control_Signals;
+	
+MUX_2_To_1 Mem_to_Reg_MUX(Memory_Address_Write_Back, Read_Data_Write_Back, Mem_to_Reg, input_of_Jal_MUX);
+MUX_2_To_1 jal_MUX(input_of_Jal_MUX, address_Write_Back, Jal, Write_Data);
+
+endmodule

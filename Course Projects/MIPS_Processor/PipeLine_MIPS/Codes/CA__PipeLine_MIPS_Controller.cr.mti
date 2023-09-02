@@ -1,0 +1,69 @@
+D:/modelsim_ase/Projects/CA__PipeLine_MIPS_Stages.v {1 {vlog -work work -stats=none D:/modelsim_ase/Projects/CA__PipeLine_MIPS_Stages.v
+Model Technology ModelSim - Intel FPGA Edition vlog 2020.1 Compiler 2020.02 Feb 28 2020
+-- Compiling module Stage_IF
+-- Compiling module IF_ID
+-- Compiling module Stage_ID
+-- Compiling module ID_EX
+-- Compiling module Stage_EX
+-- Compiling module EX_M
+-- Compiling module Stage_MEM
+-- Compiling module M_WB
+-- Compiling module Stage_Write_Back
+
+Top level modules:
+	Stage_IF
+	IF_ID
+	Stage_ID
+	ID_EX
+	Stage_EX
+	EX_M
+	Stage_MEM
+	M_WB
+	Stage_Write_Back
+
+} {} {}} D:/modelsim_ase/Projects/CA__PipeLine_MIPS_DataPath.v {1 {vlog -work work -stats=none D:/modelsim_ase/Projects/CA__PipeLine_MIPS_DataPath.v
+Model Technology ModelSim - Intel FPGA Edition vlog 2020.1 Compiler 2020.02 Feb 28 2020
+-- Compiling module PipeLine_MIPS_Data_Path
+
+Top level modules:
+	PipeLine_MIPS_Data_Path
+
+} {} {}} D:/modelsim_ase/Projects/CA__PipeLine_MIPS_Controller.v {1 {vlog -work work -stats=none D:/modelsim_ase/Projects/CA__PipeLine_MIPS_Controller.v
+Model Technology ModelSim - Intel FPGA Edition vlog 2020.1 Compiler 2020.02 Feb 28 2020
+-- Compiling module ALU_Controller
+-- Compiling module Hazard_Unit
+-- Compiling module Forwarding_Unit
+-- Compiling module Controller
+
+Top level modules:
+	ALU_Controller
+	Hazard_Unit
+	Forwarding_Unit
+	Controller
+
+} {} {}} D:/modelsim_ase/Projects/CA__PipeLine_MIPS_Modules.v {1 {vlog -work work -stats=none D:/modelsim_ase/Projects/CA__PipeLine_MIPS_Modules.v
+Model Technology ModelSim - Intel FPGA Edition vlog 2020.1 Compiler 2020.02 Feb 28 2020
+-- Compiling module adder
+-- Compiling module MUX_2_To_1
+-- Compiling module MUX_2_To_1_5_bit
+-- Compiling module MUX_2_To_1_11_bit
+-- Compiling module MUX_3_To_1
+-- Compiling module ALU
+-- Compiling module Data_Memory
+-- Compiling module Instruction_Memory
+-- Compiling module Register_File
+-- Compiling module PC
+
+Top level modules:
+	adder
+	MUX_2_To_1
+	MUX_2_To_1_5_bit
+	MUX_2_To_1_11_bit
+	MUX_3_To_1
+	ALU
+	Data_Memory
+	Instruction_Memory
+	Register_File
+	PC
+
+} {} {}}

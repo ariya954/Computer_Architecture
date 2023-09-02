@@ -1,0 +1,33 @@
+D:/modelsim_ase/CA__Single_Cycle_MIPS_TestBench.v {1 {vlog -work work -stats=none D:/modelsim_ase/CA__Single_Cycle_MIPS_TestBench.v
+Model Technology ModelSim - Intel FPGA Edition vlog 2020.1 Compiler 2020.02 Feb 28 2020
+-- Compiling module Single_Cycle_MIPS_Test_Bench
+
+Top level modules:
+	Single_Cycle_MIPS_Test_Bench
+
+} {} {}} D:/modelsim_ase/Projects/CA__Sinlge_Cycle_MIPS_TestBench.v {1 {vlog -work work -stats=none D:/modelsim_ase/Projects/CA__Sinlge_Cycle_MIPS_TestBench.v
+Model Technology ModelSim - Intel FPGA Edition vlog 2020.1 Compiler 2020.02 Feb 28 2020
+-- Compiling module Single_Cycle_MIPS_Test_Bench
+
+Top level modules:
+	Single_Cycle_MIPS_Test_Bench
+
+} {} {}} D:/modelsim_ase/Projects/CA__Single_Cycle_MIPS.v {1 {vlog -work work -stats=none D:/modelsim_ase/Projects/CA__Single_Cycle_MIPS.v
+Model Technology ModelSim - Intel FPGA Edition vlog 2020.1 Compiler 2020.02 Feb 28 2020
+-- Compiling module Register_32_bit
+-- Compiling module instruction_MEM
+-- Compiling module Memory
+-- Compiling module Register_File
+-- Compiling module ALU
+-- Compiling module Sign_Extension_16_bit
+-- Compiling module Sign_Extension_21_bit
+-- Compiling module Sign_Extension_26_bit
+-- Compiling module Single_Cycle_MIPS_DataPath
+-- Compiling module Single_Cycle_MIPS_ALU_Controller
+-- Compiling module Single_Cycle_MIPS_CU
+-- Compiling module Single_Cycle_MIPS
+
+Top level modules:
+	Single_Cycle_MIPS
+
+} {} {}}
